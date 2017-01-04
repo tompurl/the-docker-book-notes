@@ -1,0 +1,694 @@
+#+TITLE: The Docker Book - Book Notes
+#+PROPERTY: header-args :eval never-export :results verbatim
+
+* Document Links
+- https://www.dockerbook.com/
+
+* Notes
+
+** Chapter 1 - Introduction
+
+*** Introducing Docker
+
+Automates the delopyment of applications into (typically lxc)
+containers.
+
+It has the following characteristics:
+
+- An easy and lightweight way to model reality
+- A logical segregation of duties
+  - Dev only worries about getting their code to work in a container
+  - Ops only worries about making sure that the container works in
+    Prod.
+- Fast, efficient development life cycle
+- Encourages SOA / Microservices
+  - It is recommended that each container only run a single application
+
+*** Docker components
+
+**** Docker client and server
+
+"Docker engine" = "Docker server"
+
+The server does all of the work. 
+
+A *docker host* is comprised of *containers* and the *docker
+daemon/engine/server*. Docker *clients* connect to the daemon, and
+all of this can run on one machine.
+
+**** Docker images
+
+Images are the "base part" of docker. You launch *containers from
+images*.
+
+**** Registries
+
+Images are stored in registries.
+
+Two types - public and private
+
+Apparently registries are part of the workflow of moving code from
+a developer's workstation into prod.
+
+**** Containers
+
+The executing code that is made up of images - the "running aspect".
+
+**** Compose and Swarm
+
+These technologies stitch containers together.
+
+*** What can you use Docker for?
+
+Oh all kinds of things!
+
+*** Docker with configurations management
+
+CM is better suited for long-lasting, mutable hosts. That's not really
+Docker's thing.
+
+*** Docker's technical components
+
+Lots of stuff we'll talk about later.
+
+*** What's in the book?
+
+Many more things!
+
+** Chapter 2 - Installing Docker
+
+This is pretty easy to do on Debian.
+** Chapter 3 - Getting started with Docker
+
+*** Ensuring Docker is ready
+
+#+BEGIN_EXAMPLE
+
+sudo docker info
+
+#+END_EXAMPLE
+
+*** Running our first container
+
+#+BEGIN_EXAMPLE
+
+sudo docker run -i -t ubuntu /bin/bash
+
+#+END_EXAMPLE
+
+Flags:
+
+- =-i= Keeps =STDIN= open
+- =-t= Assigns a pseudo-tty
+
+Here's what happened:
+
+- My system installed the *Ubuntu image* (along with others) from the
+  Docker hub.
+- Docker *created a container* based on the downloaded containers.
+- Docker then passed the "/bin/bash" command to the container.
+
+*** Working with our first container
+
+You can exit the container by typing =exit=.
+
+The container still exists and you can see it using the following
+command:
+
+#+BEGIN_EXAMPLE
+
+# show only running containers
+sudo docker ps
+# show *all* containers, even if they're not running:
+sudo docker ps -a
+
+#+END_EXAMPLE
+
+*** Container naming
+
+You can name a container by passing it the "--name" flag to =docker
+run=.
+
+Cool, after exiting the "bob_the_container" container I see it *and*
+my previous, unnamed ubuntu container when I execute =sudo docker ps
+-a=.
+
+Ok, this is weird too. Before I thought that containers were just
+"running images", but they also exist when they're *not* running. I 
+thought they were completely ephemeral.
+
+*** Starting a stopped container
+
+#+BEGIN_EXAMPLE
+
+sudo docker start bob_the_container
+
+#+END_EXAMPLE
+
+*** Attaching to a container
+
+#+BEGIN_EXAMPLE
+
+sudo docker attach bob_the_container
+
+#+END_EXAMPLE
+
+*** Creating daemonized containers
+
+Please note that we're not *starting existing containers*, we're
+*running new containers*:
+
+#+BEGIN_EXAMPLE
+
+sudo docker run --name daemon_dave -d ubuntu /bin/sh -c "while true; do echo hello world; sleep 1; done"
+
+#+END_EXAMPLE
+
+*** Seeing what's happening inside our container
+
+You can tail the logs (which I belive is =STDOUT=) with this command:
+
+#+BEGIN_EXAMPLE
+
+sudo docker logs daemon_dave
+
+# Follow the logs:
+sudo docker logs -f daemon_dave
+
+#+END_EXAMPLE
+
+There are loads of other =tail=-like options.
+
+*** Docker log drivers
+
+By default =STDERR= and =STDOUT= are sent to the console and you can
+view them using the =logs= argument above. If you want more
+sophisticated control of your logs, however, you can use *log drivers* 
+to do things like send your logs to a central logging server or syslog.
+
+*** Inspecting the container's processes
+
+Check out the processes in a container like this:
+
+#+BEGIN_EXAMPLE
+
+sudo docker top daemon_dave
+
+#+END_EXAMPLE
+
+*** Docker statistics
+
+#+BEGIN_EXAMPLE
+
+sudo docker stats 
+
+#+END_EXAMPLE
+
+*** Running a process inside a container
+
+You can run two types of additional processes inside containers *after
+they have started running*:
+
+****  Background
+
+The =-d= flag indicates that we're running a background process.
+
+#+BEGIN_EXAMPLE
+
+sudo docker exec -d daemon_dave touch /etc/new_config_file
+
+#+END_EXAMPLE
+
+**** Interactive 
+
+#+BEGIN_EXAMPLE
+
+sudo docker exec -t -i daemon_dave /bin/bash
+
+#+END_EXAMPLE
+
+This is a nice way to connect to a running container with a shell
+to troubleshoot it.
+
+*** Stopping a daemonized container
+
+#+BEGIN_EXAMPLE
+
+# send SIGTERM which is good :-) 
+sudo docker stop daemon_dave
+
+#+END_EXAMPLE
+
+*** Automatic container restarts
+
+There's also a =--restart= flag.
+
+*** Finding out more about our container
+
+#+BEGIN_EXAMPLE
+
+sudo docker inspect daemon_wayne
+
+# Grab a particular line with a query
+sudo docker inspect --format='{{ .State.Running }}' daemon_wayne
+
+#+END_EXAMPLE
+
+*** Deleting a container
+
+#+BEGIN_EXAMPLE
+
+sudo docker rm daemon_wayne
+
+#+END_EXAMPLE
+
+** Chapter 4 - Working with Docker images and repositories
+
+*** What is a Docker image?
+
+A docker image is comprised of filesystem layered over each other.
+
+Layers:
+
+- bootfs
+- rootfs (typically an OS)
+- more RO filesystems
+  - Uses a *union mount*, which allows several filesystems to be
+    mounted at one time and appear as one filesystem.
+- The top 
+
+Each filesystem is called an image. 
+
+Docker mounts a RW filesystem on top when a container is launched
+where the process(es) will be executed.
+
+Containers have state, they can be changed.
+
+*** Listing Docker images
+
+#+BEGIN_EXAMPLE
+
+sudo docker images
+
+#+END_EXAMPLE
+
+Images can have *tags*.
+
+*** Pulling images
+
+You can pull new images like this:
+
+#+BEGIN_EXAMPLE
+
+sudo docker pull ubuntu:16:04
+
+#+END_EXAMPLE
+
+*** Searching for images
+
+#+BEGIN_EXAMPLE
+
+sudo docker search puppet
+
+#+END_EXAMPLE
+
+*** Building your own images
+
+You can use =docker commit= or =docker build=, but you should only use
+=build= because it works with Dockerfiles and is much more flexible.
+
+*** Creating a Docker Hub account
+
+Just do it.
+
+*** Using Docker commit to create images
+
+Don't do it.
+
+*** Building images with a Dockerfile
+
+Each instruction adds a new layer to the image and the commits the
+image.
+
+If one of your instructions in this file fails the process will still
+leave you with an image that has all of the previous working layers
+applied.
+
+*** Building the image from our Dockerfile
+
+#+BEGIN_EXAMPLE
+
+sudo docker build -t="tompurl/alpine_emacs"
+
+#+END_EXAMPLE
+
+*** What happens if an instruction fails?
+
+You can log into a container built on that image like this:
+
+#+BEGIN_EXAMPLE
+
+sudo docker run -t -i image-id /bin/sh
+
+#+END_EXAMPLE
+
+*** Dockerfiles and the build cache
+
+=--no-cache= means that all of the commands in your Dockerfile will be
+re-executed.
+
+*** Using the build cache for templating
+
+You can add the following to your Dockerfile:
+
+#+BEGIN_EXAMPLE
+
+ENV REFRESHED AT 2016-12-01
+
+#+END_EXAMPLE
+
+If you update that value then every subsequent line will be
+re-executed.
+
+*** Viewing our new image
+
+#+BEGIN_EXAMPLE
+
+sudo docker images tompurl/alpine_emacs
+sudo docker history esnterntesrnt
+
+#+END_EXAMPLE
+
+*** Launching a container from our new image
+
+#+BEGIN_EXAMPLE
+
+sudo docker run -t -i -name emacs tompurl/alpine_emacs /bin/ash
+
+#+END_EXAMPLE
+
+That creates the container. When I exit out of it the container
+also stops. To re-start and attach to it I do this:
+
+#+BEGIN_EXAMPLE
+
+sudo docker start emacs
+sudo docker attach emacs
+
+#+END_EXAMPLE
+
+*** Dockerfile instructions
+
+**** CMD
+
+Specifies commands to run when the *container is launched*. 
+
+This is different from the =RUN= instruction because that specifies
+commands that are executed when the image is being *built*.
+
+You can override this instruction on the command line.
+
+**** ENTRYPOINT
+
+A lot like =CMD= but harder to override.
+
+**** WORKDIR
+
+Just a working directory.
+
+**** ENV
+
+Used to set environment vars.
+
+**** USER
+
+Specifies the use that the image should be run as.
+
+**** VOLUME
+
+I think we first need to understand volumes. Here's the rules:
+
+- They can be shared between containers
+- A container doesn't have to be running to share its volumes
+- Changes to a volume are made directly
+- Changes to a volume will not be included when you update an image
+- Volumes persist until no containers use them.
+
+So you can add these using this instruction.
+
+**** ADD
+
+Copies files from the source on the hypervisor to the destination
+within the *image*.
+
+It will also automatically unpack tar archives.
+
+**** COPY  
+
+A lot like =ADD= without the extraction and decompression abilities.
+
+Anything outside of the build context can't be copied.
+
+**** LABEL
+
+Adds metadata to the image.
+
+**** STOPSIGNAL
+
+The signal that will be used when you tell the container to stop.
+
+**** ARG
+
+Defines variables that are passed at build time.
+
+**** SHELL
+
+Allows you to override the shell that's used to execute commands.
+
+The default is =/bin/sh=.
+
+**** HEALTHCHECK
+
+Runs a command every X seconds to check the health of your container.
+
+You can use the =inspect= argument to query the return value of the
+health check.
+
+There can only be one of these in a Dockerfile.
+
+**** ONBUILD
+
+This is somewhat confusing so I'm going to come back to it later.
+
+*** Pushing images to the Docker Hub
+
+#+BEGIN_EXAMPLE
+
+sudo docker push tompurl/alpine_emacs
+
+#+END_EXAMPLE
+
+*** Automated Builds
+
+So this is an option.
+
+*** Deleting an image
+
+#+BEGIN_EXAMPLE
+
+sudo dockir rmi tompurl/alpine_emacs
+
+#+END_EXAMPLE
+
+To delete it off of the Docker Hub you need to use the web interface.
+
+*** Running your own Docker registry
+
+You can run your own registry without a UI using FOSS code from
+Docker.
+
+**** Running a registry from a container
+
+#+BEGIN_EXAMPLE
+
+sudo docker run  -d -p 5000:5000 --name registry registry:2
+
+#+END_EXAMPLE
+
+Now I can add =tompurl/alpine_emacs= to this local registry.
+
+#+BEGIN_EXAMPLE
+
+sudo docker tag 0a8ba341d40c my.localhost.com:5000/tompurl/alpine_emacs
+
+#+END_EXAMPLE
+
+I'm not really sure what =tag= does at this point except add another
+entry in the =docker images= output.
+
+Here's how you push it:
+
+#+BEGIN_EXAMPLE
+
+sudo docker push my.localhost.com:5000/tompurl/alpine_emacs
+
+#+END_EXAMPLE
+
+...and then you can =run= it:
+
+#+BEGIN_EXAMPLE
+
+sudo docker run -t -i my.localhost.com:5000/tompurl/alpine_emacs /bin/ash
+
+#+END_EXAMPLE
+
+** Chapter 5 - Testing with Docker
+
+*** Using Docker to test a static website
+
+Create our working dir:
+
+#+BEGIN_SRC sh :exports both :dir ~/Dev/Docker
+
+mkdir sample
+
+#+END_SRC
+
+#+RESULTS:
+
+Download config files:
+
+#+BEGIN_SRC sh :exports both :dir ~/Dev/Docker/sample
+
+wget https://raw.githubusercontent.com/jamtur01/dockerbook-code/master/code/5/sample/nginx/global.conf
+wget https://raw.githubusercontent.com/jamtur01/dockerbook-code/master/code/5/sample/nginx/nginx.conf
+
+#+END_SRC
+
+#+RESULTS:
+
+Now let's create the =Dockerfile=:
+
+#+BEGIN_SRC sh :exports both :dir ~/Dev/Docker/sample
+
+cat <<EOF > Dockerfile
+FROM ubuntu:16.04
+MAINTAINER Tom Purl "<tom@tompurl.com>"
+ENV REFRESHED_AT 2017-01-03
+RUN apt-get -yqq update && apt-get -yqq install nginx
+RUN mkdir -p /var/www/html/website
+ADD global.conf /etc/nginx/conf.d/
+ADD nginx.conf /etc/nginx/nginx.conf
+EXPOSE 80
+EOF
+
+#+END_SRC
+
+#+RESULTS:
+
+...and now let's build our image:
+
+#+BEGIN_SRC sh :exports both :dir ~/Dev/Docker/sample 
+
+sudo docker build -t tompurl/nginx .
+
+#+END_SRC
+
+#+RESULTS:
+#+begin_example
+Sending build context to Docker daemon 4.096 kB
+Step 1 : FROM ubuntu:16.04
+ ---> 104bec311bcd
+Step 2 : MAINTAINER Tom Purl "<tom@tompurl.com>"
+ ---> Using cache
+ ---> 282dcb00cc8b
+Step 3 : ENV REFRESHED_AT 2017-01-03
+ ---> Using cache
+ ---> 6dc275877c48
+Step 4 : RUN apt-get -yqq update && apt-get -yqq install nginx
+ ---> Using cache
+ ---> 91a8bef9ea0b
+Step 5 : RUN mkdir -p /var/www/html/website
+ ---> Using cache
+ ---> c28fa568b3c2
+Step 6 : ADD global.conf /etc/nginx/conf.d/
+ ---> Using cache
+ ---> 365c3e022248
+Step 7 : ADD nginx.conf /etc/nginx/nginx.conf
+ ---> Using cache
+ ---> 726d0c223e77
+Step 8 : EXPOSE 80
+ ---> Using cache
+ ---> 9035336945b0
+Successfully built 9035336945b0
+#+end_example
+
+*** Building containers from our sample website and Nginx image
+
+Ok, let's create a directory containing our code. I assume that in a
+real scenario this would be the folder containing whatever deliverable
+in whatever language.
+
+#+BEGIN_SRC sh :exports both :dir ~/Dev/Docker
+
+mkdir website 
+wget https://raw.githubusercontent.com/jamtur01/dockerbook-code/master/code/5/sample/website/index.html -O ./website/index.html
+
+#+END_SRC
+
+#+RESULTS:
+
+Next, let's run this code in our nginx container:
+
+#+BEGIN_SRC sh :exports both :dir ~/Dev/Docker
+
+sudo docker run -d -p 80 --name website \
+  -v $PWD/website:/var/www/html/website \
+  tompurl/nginx nginx
+
+#+END_SRC
+
+#+RESULTS:
+: bca1f688b71933254ac45557bef6a4158366250b19cbb533e85afc0ec3bc1241
+
+The =-v= option allows us to create a *volume* which is a disk that's
+accessible from teh container.
+
+Now let's see what it looks like:
+
+#+BEGIN_SRC sh :exports both :dir ~/Dev/Docker/website
+
+sudo docker ps
+
+#+END_SRC
+
+#+RESULTS:
+: CONTAINER ID        IMAGE               COMMAND                  CREATED             STATUS              PORTS                    NAMES
+: bca1f688b719        tompurl/nginx       "nginx"                  9 seconds ago       Up 6 seconds        0.0.0.0:32769->80/tcp    website
+: 5914c3d7aaa1        registry:2          "/entrypoint.sh /etc/"   23 hours ago        Up 23 hours         0.0.0.0:5000->5000/tcp   registry
+
+Please note that =registry:2= is my local docker repo. I would rather
+keep that running while I'm doing these exercise.
+
+Also, please note the =PORTS= section above and how they're mapped. To
+access our web app from the localhost/hypervisor we'll need to use port
+32769.
+
+We're using volumes, and they're nice because we can take data out
+of an image. This gives us more flexibility.
+
+You can also make volumes RO.
+
+Now let's update the website:
+
+#+BEGIN_SRC sh :exports both :dir ~/Dev/Docker/website
+
+sed -ri 's/website<\/h1>/website for Docker\<\/h1\>/g' index.html
+
+#+END_SRC
+
+#+RESULTS:
+
+Cool, and my test in the browser works.
+
+*** Using Docker to build and test a web application
